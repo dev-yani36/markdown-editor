@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Real-Time Collaborative Markdown Editor</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #333333;
+            --box-bg: #ffffff;
+            --border-color: #ccc;
+        }
+        body.dark-mode {
+            --bg-color: #1e1e1e;
+            --text-color: #e0e0e0;
+            --box-bg: #2d2d2d;
+            --border-color: #444;
+        }
+        body { 
+            font-family: Arial, sans-serif; 
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 10px;
+            display: flex;
+            flex-direction: column;
+            height: 95vh;
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px 10px;
+            margin-bottom: 10px;
+        }
+        .container {
+            display: flex;
+            flex: 1;
+            gap: 10px;
+        }
+        textarea, #preview { 
+            flex: 1; 
+            padding: 15px; 
+            border: 1px solid var(--border-color); 
+            border-radius: 5px; 
+            background-color: var(--box-bg);
+            color: var(--text-color);
+            overflow-y: auto; 
+        }
+        textarea { font-family: monospace; font-size: 14px; resize: none; }
+        button {
+            padding: 8px 12px;
+            cursor: pointer;
+            border: none;
+            border-radius: 4px;
+            background-color: #007acc;
+            color: white;
+            font-weight: bold;
+        }
+        button:hover { background-color: #005999; }
+    </style>
+</head>
+<body>
+    <header>
+        <div><strong>Active Users: <span id="user-count">1</span></strong></div>
+        <div>
+            <button onclick="toggleDarkMode()">Toggle Dark Mode</button>
+            <button onclick="downloadMarkdown()">Export .md</button>
+        </div>
+    </header>
+
+    <div class="container">
+        <textarea id="editor" placeholder="Type Markdown here..."></textarea>
+        <div id="preview"></div>
+    </div>
+
+    <script>
+        const editor = document.getElementById('editor');
+        const preview = document.getElementById('preview');
+        const userCount = document.getElementById('user-count');
+        const ws = new WebSocket('ws://localhost:8000/ws');
+
+        editor.addEventListener('input', () => {
+            const text = editor.value;
+            preview.innerHTML = marked.parse(text);
+            ws.send(text);
+        });
+
+        ws.onmessage = (event) => {
+            if (event.data.startsWith('COUNT:')) {
+                userCount.textContent = event.data.split(':')[1];
+            } else {
+                editor.value = event.data;
+                preview.innerHTML = marked.parse(event.data);
+            }
+        };
+
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark-mode');
+        }
+
+        function downloadMarkdown() {
+            const blob = new Blob([editor.value], { type: 'text/markdown' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'document.md';
+            link.click();
+        }
+    </script>
+</body>
+</html>
